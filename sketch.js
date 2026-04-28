@@ -46,9 +46,14 @@ function setup() {
       }
     });
     
-    // 關鍵修正：確保在手機上視訊能正常在網頁內播放，且不會自動跳轉全螢幕
-    video.elt.setAttribute('playsinline', ''); 
+    // 行動裝置相容性修正：確保視訊能在網頁內自動播放且不跳出全螢幕
+    video.elt.setAttribute('playsinline', '');
+    video.elt.setAttribute('autoplay', '');
+    video.elt.setAttribute('muted', '');
     video.hide();
+
+    // 關鍵修正：必須呼叫 detectStart 才會開始執行手部辨識循環
+    handPose.detectStart(video, gotHands);
   }
 }
 
