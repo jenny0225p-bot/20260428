@@ -4,10 +4,22 @@
 let video;
 let handPose;
 let hands = [];
+let statusMsg = "系統檢查中...";
+let isWebglSupported = false;
 
 function preload() {
-  // Initialize HandPose model with flipped video input
-  handPose = ml5.handPose({ flipped: true });
+  isWebglSupported = checkWebGL();
+  if (isWebglSupported) {
+    statusMsg = "正在載入 ml5 模型...";
+    // 初始化 HandPose，並加入載入完成的回呼函式
+    handPose = ml5.handPose({ flipped: true }, modelLoaded);
+  } else {
+    statusMsg = "錯誤：此裝置不支援 WebGL，無法執行影像辨識。";
+  }
+}
+
+function modelLoaded() {
+  statusMsg = "模型載入成功！";
 }
 
 function mousePressed() {
@@ -19,16 +31,36 @@ function gotHands(results) {
 }
 
 function setup() {
-  createCanvas(640, 480);
-  video = createCapture(VIDEO, { flipped: true });
-  video.hide();
+  createCanvas(windowWidth, windowHeight);
+  if (isWebglSupported) {
+    video = createCapture(VIDEO, { flipped: true });
+    video.hide();
 
-  // Start detecting hands
-  handPose.detectStart(video, gotHands);
+    // 開始偵測手部
+    handPose.detectStart(video, gotHands);
+  }
 }
 
 function draw() {
-  image(video, 0, 0);
+  background('#e7c6ff');
+
+  // 計算影像顯示的大小（畫布的 50%）
+  let displayW = width * 0.5;
+  let displayH = height * 0.5;
+  // 計算置中座標
+  let x = (width - displayW) / 2;
+  let y = (height - displayH) / 2;
+
+  if (video) {
+    image(video, x, y, displayW, displayH);
+  }
+
+  // 顯示狀態訊息在畫面頂端
+  fill(0);
+  noStroke();
+  textSize(20);
+  textAlign(CENTER, TOP);
+  text(statusMsg, width / 2, 20);
 
   // Ensure at least one hand is detected
   if (hands.length > 0) {
@@ -46,9 +78,28 @@ function draw() {
           }
 
           noStroke();
-          circle(keypoint.x, keypoint.y, 16);
+          
+          // 將原始影像座標映射到畫布縮放後的座標
+          let mappedX = map(keypoint.x, 0, video.width, x, x + displayW);
+          let mappedY = map(keypoint.y, 0, video.height, y, y + displayH);
+          
+          circle(mappedX, mappedY, 16);
         }
       }
     }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+// 檢查瀏覽器是否支援 WebGL 的輔助函式
+function checkWebGL() {
+  try {
+    let canvas = document.createElement('canvas');
+    return !!(window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
+  } catch (e) {
+    return false;
   }
 }
