@@ -11,8 +11,12 @@ function preload() {
   isWebglSupported = checkWebGL();
   if (isWebglSupported) {
     statusMsg = "正在載入 ml5 模型...";
-    // 初始化 HandPose，並加入載入完成的回呼函式
-    handPose = ml5.handPose({ flipped: true }, modelLoaded);
+    try {
+      // 初始化 HandPose，並加入載入完成的回呼函式
+      handPose = ml5.handPose({ flipped: true }, modelLoaded);
+    } catch (e) {
+      statusMsg = "模型載入失敗: " + e.message;
+    }
   } else {
     statusMsg = "錯誤：此裝置不支援 WebGL，無法執行影像辨識。";
   }
@@ -33,13 +37,18 @@ function gotHands(results) {
 function setup() {
   createCanvas(windowWidth, windowHeight);
   if (isWebglSupported) {
-    video = createCapture(VIDEO, { flipped: true });
+    // 嘗試啟動攝影機，並加入成功/失敗判斷
+    video = createCapture(VIDEO, { flipped: true }, function(stream) {
+      if (stream) {
+        console.log("Camera ready");
+      } else {
+        statusMsg = "無法存取攝影機，請檢查權限設定";
+      }
+    });
+    
     // 關鍵修正：確保在手機上視訊能正常在網頁內播放，且不會自動跳轉全螢幕
     video.elt.setAttribute('playsinline', ''); 
     video.hide();
-
-    // 開始偵測手部
-    handPose.detectStart(video, gotHands);
   }
 }
 
@@ -47,7 +56,10 @@ function draw() {
   background('#e7c6ff');
 
   // 確保視訊已經準備好且有寬高資訊
-  if (!video || video.width <= 1) return;
+  if (!video || video.width <= 1) {
+    drawStatusMessage();
+    return;
+  }
 
   // 計算影像顯示的大小（畫布的 50%）
   let displayW = width * 0.5;
@@ -58,12 +70,7 @@ function draw() {
 
   image(video, x, y, displayW, displayH);
 
-  // 顯示狀態訊息在畫面頂端
-  fill(0);
-  noStroke();
-  textSize(20);
-  textAlign(CENTER, TOP);
-  text(statusMsg, width / 2, 20);
+  drawStatusMessage();
 
   // Ensure at least one hand is detected
   if (hands.length > 0) {
@@ -95,6 +102,19 @@ function draw() {
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+}
+
+// 繪製狀態訊息的輔助函式
+function drawStatusMessage() {
+  push();
+  fill(0, 150); // 半透明背景
+  rect(0, 0, width, 40);
+  fill(255);
+  noStroke();
+  textSize(16);
+  textAlign(CENTER, CENTER);
+  text(statusMsg, width / 2, 20);
+  pop();
 }
 
 // 檢查瀏覽器是否支援 WebGL 的輔助函式
