@@ -34,6 +34,8 @@ function setup() {
   createCanvas(windowWidth, windowHeight);
   if (isWebglSupported) {
     video = createCapture(VIDEO, { flipped: true });
+    // 關鍵修正：確保在手機上視訊能正常在網頁內播放，且不會自動跳轉全螢幕
+    video.elt.setAttribute('playsinline', ''); 
     video.hide();
 
     // 開始偵測手部
@@ -44,6 +46,9 @@ function setup() {
 function draw() {
   background('#e7c6ff');
 
+  // 確保視訊已經準備好且有寬高資訊
+  if (!video || video.width <= 1) return;
+
   // 計算影像顯示的大小（畫布的 50%）
   let displayW = width * 0.5;
   let displayH = height * 0.5;
@@ -51,9 +56,7 @@ function draw() {
   let x = (width - displayW) / 2;
   let y = (height - displayH) / 2;
 
-  if (video) {
-    image(video, x, y, displayW, displayH);
-  }
+  image(video, x, y, displayW, displayH);
 
   // 顯示狀態訊息在畫面頂端
   fill(0);
